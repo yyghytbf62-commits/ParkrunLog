@@ -54,7 +54,7 @@ textarea{width:100%;min-height:70px}
 <p class="hint">Event numbers come from the "Event #s run" box on each logged parkrun. Add any others here (ranges OK, e.g. 1-12, 15):</p><textarea id="ex" style="min-height:50px"></textarea></div>
 <div class="panel"><b>Parkruns to plan</b><p class="hint">Enter a parkrun's latest event number and the Saturday it was held. Adding the same name again replaces it.</p>
 <div class="row"><input id="pn" list="pl" placeholder="Parkrun name" style="flex:1;min-width:120px"><datalist id="pl"></datalist><input id="pc" type="number" min="1" placeholder="Event #" style="width:90px"><input id="pd" type="date"><button class="pri" data-a="padd">Add</button></div><div id="plist"></div></div>
-<div class="panel"><div class="row"><b>Matching weekends</b><select id="hz"><option value="13">Next 3 months</option><option value="26">Next 6 months</option><option value="52">Next 12 months</option></select></div>
+<div class="panel"><div class="row"><b>Matches</b><select id="hz"><option value="13">Next 3 months</option><option value="26">Next 6 months</option><option value="52">Next 12 months</option></select><select id="vw"><option value="wk">By weekend</option><option value="no">By number</option></select></div>
 <p class="hint">Assumes one event every Saturday. Cancellations and special days (Christmas, New Year) shift the numbers, so recheck nearer the date.</p><div id="res"></div></div>
 </div>
 </main>
@@ -133,10 +133,11 @@ document.getElementById('wst').innerHTML=`Wilson: <b>${w}</b> · highest event #
 document.getElementById('pl').innerHTML=S.map(e=>`<option value="${esc(e.n)}">`).join('');
 document.getElementById('plist').innerHTML=P.entries.map((x,i)=>`<div class="row"><span>${esc(x.n)} — #${x.c} on ${fmtD(UD(x.d))}</span><button data-a="pdel" data-i="${i}">✕</button></div>`).join('');
 const first=lastSat();if(first<todayU())first.setUTCDate(first.getUTCDate()+7);
-let h='';
+let h='';const bn={};
 for(let k=0;k<P.hz;k++){const s=new Date(first);s.setUTCDate(s.getUTCDate()+7*k);
 const hits=P.entries.map(x=>({x,n:x.c+Math.round((s-UD(x.d))/6048e5)})).filter(o=>o.n>o.x.c&&ms.has(o.n));
-if(hits.length)h+=`<div class="wk"><b>${fmtD(s)}</b><br>${hits.map(o=>`${esc(o.x.n)} <span class="pill m">#${o.n}</span>`).join(' · ')}</div>`}
+hits.forEach(o=>{(bn[o.n]=bn[o.n]||[]).push({s,x:o.x})});if(hits.length)h+=`<div class="wk"><b>${fmtD(s)}</b><br>${hits.map(o=>`${esc(o.x.n)} <span class="pill m">#${o.n}</span>`).join(' · ')}</div>`}
+if(P.vw=='no'){h=Object.keys(bn).map(Number).sort((a,b)=>a-b).map(n=>`<div class="wk"><span class="pill m">#${n}</span> ${bn[n].map(o=>`${esc(o.x.n)} — ${fmtD(o.s)}`).join('<br>')}</div>`).join('');const nm=[...ms].filter(n=>!bn[n]);if(nm.length&&P.entries.length)h+=`<p class="hint">Not reachable in this period: ${nm.slice(0,60).join(', ')}${nm.length>60?' …':''}</p>`}
 document.getElementById('res').innerHTML=!P.entries.length?'<p class="hint">Add parkruns above to see matches.</p>':h||'<p class="hint">No matching weekends in this period.</p>'}
 document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a=padd],[data-a=pdel]');if(!b)return;
 if(b.dataset.a=='pdel')P.entries.splice(+b.dataset.i,1);
@@ -145,7 +146,7 @@ savep();renderPlan()});
 document.getElementById('tg').addEventListener('input',e=>{P.target=+e.target.value||0;savep();renderPlan()});
 document.getElementById('ex').addEventListener('input',e=>{P.extra=e.target.value;savep();renderPlan()});
 document.getElementById('hz').addEventListener('change',e=>{P.hz=+e.target.value;savep();renderPlan()});
-document.getElementById('tg').value=P.target||'';document.getElementById('ex').value=P.extra;document.getElementById('hz').value=P.hz;document.getElementById('pd').value=iso(lastSat());
+document.getElementById('tg').value=P.target||'';document.getElementById('ex').value=P.extra;document.getElementById('hz').value=P.hz;document.getElementById('vw').value=P.vw||'wk';document.getElementById('vw').addEventListener('change',e=>{P.vw=e.target.value;savep();renderPlan()});document.getElementById('pd').value=iso(lastSat());
 function tab(t){document.getElementById('pg-log').hidden=t!='log';document.getElementById('pg-plan').hidden=t!='plan';document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t==t));if(t=='plan')renderPlan()}
 document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>tab(b.dataset.t));
 if(location.hash=='#plan')tab('plan');
