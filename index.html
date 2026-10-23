@@ -52,7 +52,7 @@ textarea{width:100%;min-height:70px}
 <div class="panel" style="margin-top:0"><b>Wilson status</b><div id="wst" style="margin:6px 0"></div>
 <div class="row"><label>Check event numbers 1 to… (blank = auto)</label><input id="tg" type="number" min="1" style="width:90px"></div>
 <p class="hint">Event numbers come from the "Event #s run" box on each logged parkrun. Add any others here (ranges OK, e.g. 1-12, 15):</p><textarea id="ex" style="min-height:50px"></textarea></div>
-<div class="panel"><b>Parkruns to plan</b><p class="hint">Enter a parkrun's latest event number and the Saturday it was held. Adding the same name again replaces it.</p>
+<div class="panel"><b>Parkruns to plan</b><p class="hint">Enter a parkrun's latest event number and the Saturday it was held. Adding the same name again replaces it, or edit the number and date in the list below (handy for re-syncing after a special event).</p>
 <div class="row"><input id="pn" list="pl" placeholder="Parkrun name" style="flex:1;min-width:120px"><datalist id="pl"></datalist><input id="pc" type="number" min="1" placeholder="Event #" style="width:90px"><input id="pd" type="date"><button class="pri" data-a="padd">Add</button></div><div id="plist"></div></div>
 <div class="panel"><div class="row"><b>Matches</b><select id="hz"><option value="13">Next 3 months</option><option value="26">Next 6 months</option><option value="52">Next 12 months</option></select><select id="vw"><option value="wk">By weekend</option><option value="no">By number</option></select></div>
 <p class="hint">Assumes one event every Saturday. Cancellations and special days (Christmas, New Year) shift the numbers, so recheck nearer the date.</p><div id="res"></div></div>
@@ -131,7 +131,7 @@ const ms=new Set();for(let i=1;i<=t;i++)if(!d.has(i))ms.add(i);
 const ml=[...ms];
 document.getElementById('wst').innerHTML=`Wilson: <b>${w}</b> · highest event # run: <b>${mx}</b> · checking 1–${t}<br>Missing (${ml.length}): `+(ml.slice(0,200).map(n=>`<span class="pill">${n}</span>`).join('')||'none 🎉')+(ml.length>200?' …':'');
 document.getElementById('pl').innerHTML=S.map(e=>`<option value="${esc(e.n)}">`).join('');
-document.getElementById('plist').innerHTML=P.entries.map((x,i)=>`<div class="row"><span>${esc(x.n)} — #${x.c} on ${fmtD(UD(x.d))}</span><button data-a="pdel" data-i="${i}">✕</button></div>`).join('');
+document.getElementById('plist').innerHTML=P.entries.map((x,i)=>`<div class="row"><span style="flex:1;min-width:110px">${esc(x.n)}</span><input type="number" min="1" data-pe="c" data-i="${i}" value="${x.c}" style="width:80px"><input type="date" data-pe="d" data-i="${i}" value="${esc(x.d)}"><button data-a="pdel" data-i="${i}">✕</button></div>`).join('');
 const first=lastSat();if(first<todayU())first.setUTCDate(first.getUTCDate()+7);
 let h='';const bn={};
 for(let k=0;k<P.hz;k++){const s=new Date(first);s.setUTCDate(s.getUTCDate()+7*k);
@@ -143,6 +143,7 @@ document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a=padd],
 if(b.dataset.a=='pdel')P.entries.splice(+b.dataset.i,1);
 else{const n=document.getElementById('pn').value.trim(),c=+document.getElementById('pc').value,dt=document.getElementById('pd').value;if(!n||!c||!dt)return alert('Enter a name, the latest event number and its date');P.entries=P.entries.filter(x=>x.n.toLowerCase()!=n.toLowerCase());P.entries.push({n,c,d:dt});document.getElementById('pn').value='';document.getElementById('pc').value=''}
 savep();renderPlan()});
+document.addEventListener('change',ev=>{const t=ev.target;if(!t.dataset.pe)return;const x=P.entries[+t.dataset.i];if(!x)return;const v=t.dataset.pe=='c'?+t.value:t.value;if(v){x[t.dataset.pe]=v;savep()}renderPlan()});
 document.getElementById('tg').addEventListener('input',e=>{P.target=+e.target.value||0;savep();renderPlan()});
 document.getElementById('ex').addEventListener('input',e=>{P.extra=e.target.value;savep();renderPlan()});
 document.getElementById('hz').addEventListener('change',e=>{P.hz=+e.target.value;savep();renderPlan()});
