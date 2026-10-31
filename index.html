@@ -61,9 +61,9 @@ textarea{width:100%;min-height:70px}
 <script>
 const AU=['QLD','NSW','VIC','WA','SA','TAS','ACT','NT'];
 const AUN={'queensland':'QLD','new south wales':'NSW','victoria':'VIC','western australia':'WA','south australia':'SA','tasmania':'TAS','australian capital territory':'ACT','northern territory':'NT'};
-const normG=r=>{r=r.trim();return AUN[r.toLowerCase()]||(AU.includes(r.toUpperCase())?r.toUpperCase():r)};
+const normG=r=>{r=r.trim();const k=g=>AUN[g.toLowerCase()]||g.toUpperCase(),ex=S.find(e=>k(e.g)==k(r));return ex?ex.g:(AUN[r.toLowerCase()]||(AU.includes(r.toUpperCase())?r.toUpperCase():r))};
 const SEED={};
-let S=load(),flt='all',qs='',openG=new Set(),openE=new Set();
+let renG=null,S=load(),flt='all',qs='',openG=new Set(),openE=new Set();
 function load(){let st=[];try{st=JSON.parse(localStorage.getItem('prlog2')||'[]')}catch(e){}
 const m=new Map(st.map(e=>[e.id,e]));
 for(const g in SEED)SEED[g].forEach(n=>{const id=g+'|'+n;if(!m.has(id))m.set(id,{id,g,n})});
@@ -81,11 +81,11 @@ const gs=new Set(done.map(e=>e.g));
 document.getElementById('stats').innerHTML=`<div class="stat"><b>${done.length}</b><span>Done</span></div><div class="stat"><b>${gs.size}</b><span>Regions</span></div><div class="stat"><b>${S.length}</b><span>Listed</span></div><div class="stat"><b>${avg}</b><span>Avg overall</span></div>`;
 const groups={};
 S.filter(e=>(flt=='all'||(flt=='done')==!!e.done)&&e.n.toLowerCase().includes(qs)).forEach(e=>(groups[e.g]=groups[e.g]||[]).push(e));
-const keys=Object.keys(groups).sort((a,b)=>{const x=AU.indexOf(a),y=AU.indexOf(b);return x>=0&&y>=0?x-y:x>=0?-1:y>=0?1:a.localeCompare(b)});
+const keys=Object.keys(groups).sort((a,b)=>{const gi=g=>AU.indexOf(AUN[g.toLowerCase()]||g),x=gi(a),y=gi(b);return x>=0&&y>=0?x-y:x>=0?-1:y>=0?1:a.localeCompare(b)});
 document.getElementById('list').innerHTML=keys.map(g=>{
 const L=groups[g].sort((a,b)=>a.n.localeCompare(b.n)),open=openG.has(g)||qs;
 const dn=S.filter(e=>e.g==g&&e.done).length,tot=S.filter(e=>e.g==g).length;
-return `<div class="grp"><div class="gh" data-a="grp" data-id="${esc(g)}"><span>${open?'▾':'▸'} ${esc(g)}</span><small>${dn} / ${tot}</small></div>`+(open?L.map(e=>{
+return `<div class="grp">${renG==g?`<div class="gh" style="gap:8px"><input id="rn" value="${esc(g)}" style="flex:1;min-width:0"><span style="white-space:nowrap"><button class="pri" data-a="rensave">Save</button> <button data-a="rencancel">Cancel</button></span></div>`:`<div class="gh" data-a="grp" data-id="${esc(g)}"><span>${open?'▾':'▸'} ${esc(g)}</span><small>${dn} / ${tot} <span data-a="rengrp" data-id="${esc(g)}" title="Rename" style="padding-left:6px">✏️</span></small></div>`}`+(open?L.map(e=>{
 const tg=[e.o?'★'+e.o:'',e.t,e.x,e.u?'☀ '+e.u:'',e.z?'inactive':''].filter(Boolean).join(' · ');
 let ed='';
 if(openE.has(e.id))ed=`<div class="ed"><div class="row"><label>Date</label><input type="date" data-f="date" data-id="${esc(e.id)}" value="${esc(e.date)}"></div><div class="row"><label>Event #s run</label><input data-f="nums" data-id="${esc(e.id)}" value="${esc(e.nums)}" placeholder="e.g. 12, 45" style="width:55%"></div>`+
@@ -104,10 +104,13 @@ if(a=='grp'){openG.has(id)?openG.delete(id):openG.add(id)}
 else if(a=='done'){e.done=!e.done;if(e.done&&!e.date)e.date=new Date().toISOString().slice(0,10);save()}
 else if(a=='tog'){openE.has(id)?openE.delete(id):openE.add(id)}
 else if(a=='star'){const id2=b.parentElement.dataset.id,x=get(id2),k=b.dataset.k,v=+b.dataset.v;x[k]=x[k]==v?0:v;x.done=true;save()}
+else if(a=='rengrp'){renG=id;setTimeout(()=>{const i=document.getElementById('rn');if(i){i.focus();i.select()}})}
+else if(a=='rencancel'){renG=null}
+else if(a=='rensave'){const nn=document.getElementById('rn').value.trim(),o=renG;renG=null;if(nn&&nn!=o){S.forEach(e=>{if(e.g==o){e.g=nn;let ni=nn+'|'+e.n,k=2;while(S.some(x=>x!==e&&x.id==ni))ni=nn+'|'+e.n+'#'+k++;e.id=ni}});if(openG.delete(o))openG.add(nn);openE.clear();save()}}
 else if(a=='del'){if(confirm('Remove this parkrun from your list?')){S=S.filter(x=>x.id!=id);save()}}
 else if(a=='add1'){const g=normG(document.getElementById('ar').value),nm=document.getElementById('an').value.trim();if(!g||!nm)return alert('Enter a state/country and a name');if(S.some(x=>x.id==g+'|'+nm))return alert('Already in your list');S.push({id:g+'|'+nm,g,n:nm});openG.add(g);document.getElementById('an').value='';save()}
 else if(a=='addbulk'){const t=document.getElementById('add').value.split('\n');let n=0;
-t.forEach(l=>{const p=l.split('|');if(p.length<2)return;let g=p[0].trim();g=AUN[g.toLowerCase()]||(AU.includes(g.toUpperCase())?g.toUpperCase():g);const nm=p.slice(1).join('|').trim();
+t.forEach(l=>{const p=l.split('|');if(p.length<2)return;let g=normG(p[0]);const nm=p.slice(1).join('|').trim();
 if(g&&nm&&!S.some(x=>x.id==g+'|'+nm)){S.push({id:g+'|'+nm,g,n:nm});n++}});save();document.getElementById('add').value='';alert(n+' added')}
 else if(a=='exp'){document.getElementById('bk').value=JSON.stringify({log:S,plan:P});document.getElementById('bk').select();return}
 else if(a=='imp'){try{let d=JSON.parse(document.getElementById('bk').value);if(Array.isArray(d))d={log:d};if(!d||!Array.isArray(d.log))throw 0;S=d.log;if(d.plan)P=Object.assign({entries:[],extra:'',target:0,hz:26},d.plan);save();savep();S=load();renderPlan()}catch(x){alert('Could not read that backup');return}}
@@ -144,6 +147,7 @@ if(b.dataset.a=='pdel')P.entries.splice(+b.dataset.i,1);
 else{const n=document.getElementById('pn').value.trim(),c=+document.getElementById('pc').value,dt=document.getElementById('pd').value;if(!n||!c||!dt)return alert('Enter a name, the latest event number and its date');P.entries=P.entries.filter(x=>x.n.toLowerCase()!=n.toLowerCase());P.entries.push({n,c,d:dt});document.getElementById('pn').value='';document.getElementById('pc').value=''}
 savep();renderPlan()});
 document.addEventListener('change',ev=>{const t=ev.target;if(!t.dataset.pe)return;const x=P.entries[+t.dataset.i];if(!x)return;const v=t.dataset.pe=='c'?+t.value:t.value;if(v){x[t.dataset.pe]=v;savep()}renderPlan()});
+document.addEventListener('keydown',e=>{if(e.target.id!='rn')return;if(e.key=='Enter')document.querySelector('[data-a=rensave]').click();if(e.key=='Escape')document.querySelector('[data-a=rencancel]').click()});
 document.getElementById('tg').addEventListener('input',e=>{P.target=+e.target.value||0;savep();renderPlan()});
 document.getElementById('ex').addEventListener('input',e=>{P.extra=e.target.value;savep();renderPlan()});
 document.getElementById('hz').addEventListener('change',e=>{P.hz=+e.target.value;savep();renderPlan()});
